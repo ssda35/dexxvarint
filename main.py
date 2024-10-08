@@ -111,6 +111,7 @@ async def chat_complete_feno(request):
 
 
 if __name__ == '__main__':
+    app = web.Application()
     app.router.add_post('/chat_complete_feno', chat_complete_feno)
     web.run_app(app, port=8080)
 
