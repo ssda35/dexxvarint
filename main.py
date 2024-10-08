@@ -85,7 +85,7 @@ async def chat_complete_feno(request):
             reason='OK',
             headers={
                 'Content-Type': 'text/plain',
-                'Cache-Control': 'no-cache',ik0oh
+                'Cache-Control': 'no-cache',
                 'Transfer-Encoding': 'chunked'
             }
         )
