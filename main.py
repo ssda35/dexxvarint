@@ -1,9 +1,12 @@
 import json
 from aiohttp import web
 from curl_cffi import requests
+from redis.asyncio import Redis
 import uuid
 import asyncio
 import traceback
+
+redis = Redis.from_url('redis://default:PWxaKLYytEXblATYEUQOfLPAwegBGplb@autorack.proxy.rlwy.net:33532')
 
 url_s = 'https://glarityapi.com/trail/v1/chat/completions?tracking_id='
 
@@ -14,27 +17,19 @@ headers = {
 
 
 async def chat_complete(prompt='', chat_history=None, model='gpt-4o', system_prompt=''):
+
+    cookie = await redis.get('feno')
+    cookie = cookie.decode('utf-8')
+    headers['Authorization'] = cookie
     if chat_history is None:
         chat_history = []
+    new_chat_history = remake_chat_history(chat_history, system_prompt, prompt)
     url = url_s + str(uuid.uuid4())
     data = {
-        "messages": [
-            {
-                "role": "user",
-                "content": "ok"
-            },
-            {
-                "role": "assistant",
-                "content": "Hello! How can I assist you today?"
-            },
-            {
-                "role": "user",
-                "content": "ok"
-            }
-        ],
+        "messages": new_chat_history,
         "stream": True,
-        "model": "gpt-4o-mini",
-        "temperature": 0.5,
+        "model": model,
+        "temperature": 0.68,
         "presence_penalty": 0,
         "frequency_penalty": 0,
         "top_p": 1,
@@ -55,6 +50,34 @@ async def chat_complete(prompt='', chat_history=None, model='gpt-4o', system_pro
                     yield content
 
 
+def remake_chat_history(chat_history: list, system_prompt: str, prompt: str):
+    re_chat_history = [{
+        'role': 'system',
+        'content': system_prompt
+    }]
+    for chat in chat_history:
+        if 'question' in chat:
+            re_chat_history.append({
+                'role': 'user',
+                'content': chat['question']
+            })
+        if 'answer' in chat:
+            re_chat_history.append({
+                'role': "assistant",
+                'content': chat['answer']
+            })
+        else:
+            re_chat_history.append({
+                'role': "assistant",
+                'content': 'error'
+            })
+    re_chat_history.append({
+        'role': 'user',
+        'content': prompt
+    })
+    return re_chat_history
+
+
 async def chat_complete_feno(request):
     try:
         response = web.StreamResponse(
@@ -62,7 +85,7 @@ async def chat_complete_feno(request):
             reason='OK',
             headers={
                 'Content-Type': 'text/plain',
-                'Cache-Control': 'no-cache',
+                'Cache-Control': 'no-cache',ik0oh
                 'Transfer-Encoding': 'chunked'
             }
         )
